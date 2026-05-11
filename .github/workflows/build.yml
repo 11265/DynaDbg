@@ -614,57 +614,16 @@ jobs:
         if: steps.cache-machobridge-ios.outputs.cache-hit != 'true'
         run: |
           cd src/server/src/swift
-          
-          # Get iOS SDK path
-          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          echo "iOS SDK: $SDK_PATH"
-          
-          # Build using swift build for iOS cross-compilation
-          swift build -c release \
-            --triple arm64-apple-ios \
-            --sdk "$SDK_PATH" \
-            -Xswiftc -target -Xswiftc arm64-apple-ios \
-            -Xcc -target -Xcc arm64-apple-ios \
-            -Xcxx -target -Xcxx arm64-apple-ios
-          
-          # Find the build output directory
-          BUILD_DIR=".build/arm64-apple-ios/release"
-          echo "Build directory: $BUILD_DIR"
-          
-          # List what was built
-          echo "Contents of build directory:"
-          find .build -name "*.o" -type f 2>/dev/null || echo "No .o files found"
-          find .build -name "*.a" -type f 2>/dev/null || echo "No .a files found"
-          
-          # Create products directory expected by build.rs
-          PRODUCTS_DIR=".build-xcode-ios/Build/Products/Release-iphoneos"
-          mkdir -p "$PRODUCTS_DIR"
-          
-          # Copy any .o files found
-          OBJ_COUNT=0
-          for obj in $(find .build -name "*.o" -type f 2>/dev/null); do
-            cp "$obj" "$PRODUCTS_DIR/"
-            OBJ_COUNT=$((OBJ_COUNT + 1))
-            echo "Copied: $obj"
-          done
-          
-          # Create static library if we have object files
-          cd "$PRODUCTS_DIR"
-          echo "Object files in $PRODUCTS_DIR: $(ls -1 *.o 2>/dev/null | wc -l | tr -d ' ')"
-          
-          if [ "$(ls -1 *.o 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]; then
-            ar -crs libMachOBridge.a *.o
-            echo "Created libMachOBridge.a"
-            ls -la libMachOBridge.a
-          else
-            echo "Warning: No .o files found, checking for pre-built .a files..."
-            # Try to find and copy any .a files that swift build might have created
-            for lib in $(find ../../.build -name "*.a" -type f 2>/dev/null); do
-              cp "$lib" ./
-              echo "Copied library: $lib"
-            done
-            ls -la *.a 2>/dev/null || echo "No .a files either"
-          fi
+          xcodebuild -scheme MachOBridge \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -sdk iphoneos \
+            -derivedDataPath .build-xcode-ios \
+            SKIP_INSTALL=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Add Rust target
         run: rustup target add aarch64-apple-ios
@@ -720,48 +679,16 @@ jobs:
         if: steps.cache-machobridge-macos.outputs.cache-hit != 'true'
         run: |
           cd src/server/src/swift
-          
-          # Build using swift build for macOS
-          swift build -c release
-          
-          # Find the build output directory
-          BUILD_DIR=".build/release"
-          echo "Build directory: $BUILD_DIR"
-          
-          # List what was built
-          echo "Contents of build directory:"
-          find .build -name "*.o" -type f 2>/dev/null || echo "No .o files found"
-          find .build -name "*.a" -type f 2>/dev/null || echo "No .a files found"
-          
-          # Create products directory expected by build.rs
-          PRODUCTS_DIR=".build-xcode-macos/Build/Products/Release"
-          mkdir -p "$PRODUCTS_DIR"
-          
-          # Copy any .o files found
-          OBJ_COUNT=0
-          for obj in $(find .build -name "*.o" -type f 2>/dev/null); do
-            cp "$obj" "$PRODUCTS_DIR/"
-            OBJ_COUNT=$((OBJ_COUNT + 1))
-            echo "Copied: $obj"
-          done
-          
-          # Create static library if we have object files
-          cd "$PRODUCTS_DIR"
-          echo "Object files in $PRODUCTS_DIR: $(ls -1 *.o 2>/dev/null | wc -l | tr -d ' ')"
-          
-          if [ "$(ls -1 *.o 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]; then
-            ar -crs libMachOBridge.a *.o
-            echo "Created libMachOBridge.a"
-            ls -la libMachOBridge.a
-          else
-            echo "Warning: No .o files found, checking for pre-built .a files..."
-            # Try to find and copy any .a files that swift build might have created
-            for lib in $(find ../../.build -name "*.a" -type f 2>/dev/null); do
-              cp "$lib" ./
-              echo "Copied library: $lib"
-            done
-            ls -la *.a 2>/dev/null || echo "No .a files either"
-          fi
+          xcodebuild -scheme MachOBridge \
+            -configuration Release \
+            -destination "generic/platform=macOS" \
+            -sdk macosx \
+            -derivedDataPath .build-xcode-macos \
+            SKIP_INSTALL=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Add Rust target
         run: rustup target add aarch64-apple-darwin
