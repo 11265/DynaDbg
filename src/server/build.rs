@@ -172,7 +172,7 @@ fn build_macho_bridge(target_os: &str, target_arch: &str) -> Option<PathBuf> {
     println!("cargo:warning=Building MachOBridge for {} ({}) using xcodebuild...", target_os, target_arch);
     
     // Build using xcodebuild with code signing disabled for CI environments
-    let xcodebuild_args: Vec<String> = vec![
+    let mut xcodebuild_args: Vec<String> = vec![
         "-scheme".to_string(), "MachOBridge".to_string(),
         "-configuration".to_string(), "Release".to_string(),
         "-destination".to_string(), destination.to_string(),
@@ -183,8 +183,14 @@ fn build_macho_bridge(target_os: &str, target_arch: &str) -> Option<PathBuf> {
         "CODE_SIGN_IDENTITY=".to_string(),
         "CODE_SIGNING_REQUIRED=NO".to_string(),
         "CODE_SIGNING_ALLOWED=NO".to_string(),
-        "build".to_string(),
     ];
+    
+    // Add iOS-specific deployment target to ensure Data type compatibility
+    if target_os == "ios" {
+        xcodebuild_args.push("IPHONEOS_DEPLOYMENT_TARGET=8.0".to_string());
+    }
+    
+    xcodebuild_args.push("build".to_string());
     
     let build_result = Command::new("xcodebuild")
         .current_dir(bridge_dir)

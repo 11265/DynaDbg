@@ -334,7 +334,7 @@ jobs:
   # ============================================
   build-linux-host-arm64:
     if: ${{ github.event.inputs.build_host_linux_arm64 == 'true' }}
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04-arm64
     steps:
       - uses: actions/checkout@v4
 
@@ -623,6 +623,7 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
+            IPHONEOS_DEPLOYMENT_TARGET=8.0 \
             build
 
       - name: Add Rust target
@@ -707,7 +708,7 @@ jobs:
   # ============================================
   build-server-linux-arm64:
     if: ${{ github.event.inputs.build_server_linux_arm64 == 'true' }}
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04-arm64
     steps:
       - uses: actions/checkout@v4
 
