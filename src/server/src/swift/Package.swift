@@ -6,7 +6,7 @@ let package = Package(
     name: "MachOBridge",
     platforms: [
         .macOS(.v10_15),
-        .iOS(.v8),
+        .iOS(.v11),
     ],
     products: [
         .library(

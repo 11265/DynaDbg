@@ -187,7 +187,7 @@ fn build_macho_bridge(target_os: &str, target_arch: &str) -> Option<PathBuf> {
     
     // Add iOS-specific deployment target to ensure Data type compatibility
     if target_os == "ios" {
-        xcodebuild_args.push("IPHONEOS_DEPLOYMENT_TARGET=8.0".to_string());
+        xcodebuild_args.push("IPHONEOS_DEPLOYMENT_TARGET=11.0".to_string());
     }
     
     xcodebuild_args.push("build".to_string());
