@@ -278,27 +278,53 @@ fn setup_machokit_linking(target_os: &str, target_arch: &str) {
     let mut machokit_lib_path: Option<PathBuf> = None;
     let mut macho_bridge_lib_path: Option<PathBuf> = None;
     
-    // Build MachOKit
-    if let Some(lib_path) = build_machokit(target_os, target_arch) {
-        machokit_lib_path = Some(lib_path.clone());
-        println!("cargo:warning=MachOKit built at {}", lib_path.display());
-    }
-    
-    // Build MachOBridge
-    if let Some(bridge_lib_path) = build_macho_bridge(target_os, target_arch) {
-        macho_bridge_lib_path = Some(bridge_lib_path.clone());
-        println!("cargo:warning=MachOBridge built at {}", bridge_lib_path.display());
+    // For iOS, prefer pre-built MachOBridge from xcodebuild cache
+    // The workflow builds it first before running cargo
+    if target_os == "ios" && target_arch == "aarch64" {
+        let ios_bridge_dir = Path::new("src/swift/.build-xcode-ios/Build/Products/Release-iphoneos");
+        let ios_bridge_lib = ios_bridge_dir.join("libMachOBridge.a");
+        
+        if ios_bridge_lib.exists() {
+            println!("cargo:warning=Using pre-built MachOBridge for iOS from {}", ios_bridge_lib.display());
+            println!("cargo:rustc-link-search=native={}", ios_bridge_dir.display());
+            println!("cargo:rustc-link-lib=static=MachOBridge");
+            macho_bridge_lib_path = Some(ios_bridge_dir.to_path_buf());
+        } else {
+            println!("cargo:warning=Pre-built MachOBridge not found at {}, attempting build...", ios_bridge_lib.display());
+            // Fall back to building if not pre-built
+            if let Some(bridge_lib_path) = build_macho_bridge(target_os, target_arch) {
+                macho_bridge_lib_path = Some(bridge_lib_path.clone());
+                println!("cargo:warning=MachOBridge built at {}", bridge_lib_path.display());
+            }
+        }
+    } else {
+        // Build MachOKit for non-iOS targets
+        if let Some(lib_path) = build_machokit(target_os, target_arch) {
+            machokit_lib_path = Some(lib_path.clone());
+            println!("cargo:warning=MachOKit built at {}", lib_path.display());
+        }
+        
+        // Build MachOBridge for non-iOS targets
+        if let Some(bridge_lib_path) = build_macho_bridge(target_os, target_arch) {
+            macho_bridge_lib_path = Some(bridge_lib_path.clone());
+            println!("cargo:warning=MachOBridge built at {}", bridge_lib_path.display());
+        }
     }
     
     // Link Swift libraries directly using linker args for proper ordering
     // Order matters: MachOBridge depends on MachOKit
     if let Some(ref bridge_path) = macho_bridge_lib_path {
-        let lib_file = bridge_path.join("libMachOBridge.a");
-        if lib_file.exists() {
-            // Use -force_load to ensure all symbols are included
-            println!("cargo:rustc-link-arg=-force_load");
-            println!("cargo:rustc-link-arg={}", lib_file.display());
-            println!("cargo:warning=MachOBridge linked via -force_load: {}", lib_file.display());
+        // First add the search path if using static lib linking
+        if target_os == "ios" && target_arch == "aarch64" {
+            // Already added above
+        } else {
+            let lib_file = bridge_path.join("libMachOBridge.a");
+            if lib_file.exists() {
+                // Use -force_load to ensure all symbols are included
+                println!("cargo:rustc-link-arg=-force_load");
+                println!("cargo:rustc-link-arg={}", lib_file.display());
+                println!("cargo:warning=MachOBridge linked via -force_load: {}", lib_file.display());
+            }
         }
     }
     

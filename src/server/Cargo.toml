@@ -59,5 +59,14 @@ path = "src/main.rs"
 # name = "dbg_inspector"
 # crate-type = ["cdylib"]
 
+#[build-dependencies]
+cc = "..."
+
+[package.metadata.ios]
+# iOS build configuration for MachOBridge linking
+# The build.rs script expects MachOBridge to be pre-built by xcodebuild
+# and located at: src/server/src/swift/.build-xcode-ios/Build/Products/Release-iphoneos/libMachOBridge.a
+macho_bridge_search_path = "src/server/src/swift/.build-xcode-ios/Build/Products/Release-iphoneos"
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(host_os, values("windows"))'] }
