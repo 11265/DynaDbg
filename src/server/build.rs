@@ -313,6 +313,8 @@ fn setup_machokit_linking(target_os: &str, target_arch: &str) {
     
     // Link Swift libraries directly using linker args for proper ordering
     // Order matters: MachOBridge depends on MachOKit
+    // Use -Wl,-force_load,<path> format to keep flag+path as a single argument,
+    // preventing cargo/linker from splitting them apart (which causes unresolved symbols).
     if let Some(ref bridge_path) = macho_bridge_lib_path {
         // First add the search path if using static lib linking
         if target_os == "ios" && target_arch == "aarch64" {
@@ -321,8 +323,7 @@ fn setup_machokit_linking(target_os: &str, target_arch: &str) {
             let lib_file = bridge_path.join("libMachOBridge.a");
             if lib_file.exists() {
                 // Use -force_load to ensure all symbols are included
-                println!("cargo:rustc-link-arg=-force_load");
-                println!("cargo:rustc-link-arg={}", lib_file.display());
+                println!("cargo:rustc-link-arg=-Wl,-force_load,{}", lib_file.display());
                 println!("cargo:warning=MachOBridge linked via -force_load: {}", lib_file.display());
             }
         }
@@ -331,8 +332,7 @@ fn setup_machokit_linking(target_os: &str, target_arch: &str) {
     if let Some(ref machokit_path) = machokit_lib_path {
         let lib_file = machokit_path.join("libMachOKit.a");
         if lib_file.exists() {
-            println!("cargo:rustc-link-arg=-force_load");
-            println!("cargo:rustc-link-arg={}", lib_file.display());
+            println!("cargo:rustc-link-arg=-Wl,-force_load,{}", lib_file.display());
             println!("cargo:warning=MachOKit linked via -force_load: {}", lib_file.display());
         }
     }
