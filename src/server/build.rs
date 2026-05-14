@@ -286,10 +286,6 @@ fn setup_machokit_linking(target_os: &str, target_arch: &str) {
         
         if ios_bridge_lib.exists() {
             println!("cargo:warning=Using pre-built MachOBridge for iOS from {}", ios_bridge_lib.display());
-            // Use -Wl,-force_load to ensure ALL MachOBridge symbols are included,
-            // since Rust FFI references via extern "C" may not trigger linker resolution.
-            println!("cargo:rustc-link-arg=-Wl,-force_load,{}", ios_bridge_lib.display());
-            println!("cargo:warning=MachOBridge linked via -force_load: {}", ios_bridge_lib.display());
             macho_bridge_lib_path = Some(ios_bridge_dir.to_path_buf());
         } else {
             println!("cargo:warning=Pre-built MachOBridge not found at {}, attempting build...", ios_bridge_lib.display());
@@ -315,19 +311,15 @@ fn setup_machokit_linking(target_os: &str, target_arch: &str) {
     
     // Link Swift libraries directly using linker args for proper ordering
     // Order matters: MachOBridge depends on MachOKit
-    // Use -Wl,-force_load,<path> format to keep flag+path as a single argument,
+    // Always use -Wl,-force_load,<path> format to keep flag+path as a single argument,
     // preventing cargo/linker from splitting them apart (which causes unresolved symbols).
     if let Some(ref bridge_path) = macho_bridge_lib_path {
-        // For iOS, MachOBridge was already linked with -force_load above
-        if target_os == "ios" && target_arch == "aarch64" {
-            // Already added above with -Wl,-force_load
-        } else {
-            let lib_file = bridge_path.join("libMachOBridge.a");
-            if lib_file.exists() {
-                // Use -force_load to ensure all symbols are included
-                println!("cargo:rustc-link-arg=-Wl,-force_load,{}", lib_file.display());
-                println!("cargo:warning=MachOBridge linked via -force_load: {}", lib_file.display());
-            }
+        let lib_file = bridge_path.join("libMachOBridge.a");
+        if lib_file.exists() {
+            // Use -force_load to ensure all symbols are included,
+            // since Rust FFI references via extern "C" may not trigger linker resolution.
+            println!("cargo:rustc-link-arg=-Wl,-force_load,{}", lib_file.display());
+            println!("cargo:warning=MachOBridge linked via -force_load: {}", lib_file.display());
         }
     }
     
